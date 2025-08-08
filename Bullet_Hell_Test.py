@@ -183,7 +183,7 @@ player = Player(
 )
 
 # --- Projectile storage & emit state ---
-projectiles  = []
+enemy_projectiles  = []
 tick_counter = 0
 
 # --- Enemy state ---
@@ -204,7 +204,7 @@ def emit_projectiles():
         rad = math.radians(angle)
         dx  = math.cos(rad) * PROJECTILE_SPEED
         dy  = math.sin(rad) * PROJECTILE_SPEED
-        projectiles.append(Bullet(emitter_x, emitter_y, dx, dy))
+        enemy_projectiles.append(Bullet(emitter_x, emitter_y, dx, dy))
 
 # --- Main loop ---
 running = True
@@ -235,16 +235,16 @@ while running:
 
     # Enemy projectile emission
     tick_counter += 1
-    if tick_counter % EMIT_INTERVAL == 0 and len(projectiles) < MAX_PROJECTILES:
+    if tick_counter % EMIT_INTERVAL == 0 and len(enemy_projectiles) < MAX_PROJECTILES:
         emit_projectiles()
 
     # Update enemy projectiles
-    for p in projectiles:
+    for p in enemy_projectiles:
         p.update()
-    projectiles = [p for p in projectiles if not p.is_off_screen()]
+    enemy_projectiles = [p for p in enemy_projectiles if not p.is_off_screen()]
 
     # Collision detection
-    hit = any(player.hitbox_rect.colliderect(p.get_rect()) for p in projectiles)
+    hit = any(player.hitbox_rect.colliderect(p.get_rect()) for p in enemy_projectiles)
 
     # Drawing
     screen.fill(WHITE)
@@ -256,7 +256,7 @@ while running:
 
     # Draw player and bullets
     player.draw(screen)
-    for p in projectiles:
+    for p in enemy_projectiles:
         p.draw(screen)
 
     # Show "HIT" when collision occurs
@@ -272,7 +272,7 @@ while running:
 
     # HUD: FPS & projectile count
     fps = int(clock.get_fps())
-    total_proj = len(player.bullets) + len(projectiles)
+    total_proj = len(player.bullets) + len(enemy_projectiles)
     fps_text  = font.render(f"FPS: {fps}", True, BLACK)
     proj_text = font.render(f"Projectiles: {total_proj}", True, BLACK)
     screen.blit(fps_text,  (20, 20))
