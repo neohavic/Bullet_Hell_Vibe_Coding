@@ -11,7 +11,7 @@ from scratch that mimics the likes of early Touhou? And two, can Python via
 PyGame handle something like that with a minimum 60 FPS.
 
 GOALS:
-    - 500+ bullets, minimum
+    - 500+ bullets @ 60FPS
     - Complex, Danmaku bullet patterns
     - Boss rush only, minimum 3 bosses
     - Full music soundtrack
