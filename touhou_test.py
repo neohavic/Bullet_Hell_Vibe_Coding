@@ -29,15 +29,12 @@ SINE_FREQUENCY     = 0.15
 # Screen-edge radius for full diagonal line
 EDGE_RADIUS        = math.hypot(WIDTH, HEIGHT) / 2
 
-
-
 # Emission settings
 EMISSION_INTERVAL = 30  # frames between spawns
 ORBIT_CYCLE_LIMIT = 5   # orbiting emissions before fly-out
 
 # Precompute screen-corner radius for line emitter
 EDGE_RADIUS = math.hypot(WIDTH/2, HEIGHT/2)
-
 
 # ----------------------------
 # Bullet Classes
@@ -318,8 +315,102 @@ class EmitterManager:
         if name in self.active:
             self.active[name] = not self.active[name]
 
+# ----------------------------
+# Rotation Class
+# ----------------------------
 
+class Rotation3D:
+    """
+    Manages 3D rotation state (angles + angular velocity) and applies
+    a combined rotation matrix Rz * Ry * Rx to points.
+    Angles and rates are in radians and radians/second, respectively.
+    """
+    def __init__(self, angles=(0.0, 0.0, 0.0), rates=(0.0, 0.0, 0.0)):
+        self.ax, self.ay, self.az = angles
+        self.vx, self.vy, self.vz = rates
+        self._M = None  # combined rotation matrix cache
 
+    # ----- Configuration -----
+    def set_rates(self, rates):
+        self.vx, self.vy, self.vz = rates
+
+    def set_angles(self, angles):
+        self.ax, self.ay, self.az = angles
+        self._recompute_matrix()
+
+    # ----- Update per frame -----
+    def update(self, dt):
+        # Update angles with wrap to keep values bounded
+        self.ax = (self.ax + self.vx * dt) % (2 * math.pi)
+        self.ay = (self.ay + self.vy * dt) % (2 * math.pi)
+        self.az = (self.az + self.vz * dt) % (2 * math.pi)
+        self._recompute_matrix()
+
+    # ----- Apply rotation -----
+    def rotate_point(self, p):
+        """Rotate a single (x, y, z) tuple using the cached matrix."""
+        if self._M is None:
+            self._recompute_matrix()
+        x, y, z = p
+        m = self._M
+        return (
+            m[0][0]*x + m[0][1]*y + m[0][2]*z,
+            m[1][0]*x + m[1][1]*y + m[1][2]*z,
+            m[2][0]*x + m[2][1]*y + m[2][2]*z
+        )
+
+    def rotate_points(self, points):
+        """Rotate an iterable of (x, y, z) points."""
+        if self._M is None:
+            self._recompute_matrix()
+        m = self._M
+        out = []
+        for x, y, z in points:
+            out.append((
+                m[0][0]*x + m[0][1]*y + m[0][2]*z,
+                m[1][0]*x + m[1][1]*y + m[1][2]*z,
+                m[2][0]*x + m[2][1]*y + m[2][2]*z
+            ))
+        return out
+
+    # ----- Internals -----
+    def _recompute_matrix(self):
+        cx, sx = math.cos(self.ax), math.sin(self.ax)
+        cy, sy = math.cos(self.ay), math.sin(self.ay)
+        cz, sz = math.cos(self.az), math.sin(self.az)
+
+        # Rx
+        Rx = (
+            (1, 0,   0),
+            (0, cx, -sx),
+            (0, sx,  cx),
+        )
+        # Ry
+        Ry = (
+            (cy, 0, sy),
+            (0,  1, 0),
+            (-sy,0, cy),
+        )
+        # Rz
+        Rz = (
+            (cz, -sz, 0),
+            (sz,  cz, 0),
+            (0,    0, 1),
+        )
+
+        # M = Rz * Ry * Rx
+        def matmul(A, B):
+            return tuple(
+                tuple(sum(A[i][k]*B[k][j] for k in range(3)) for j in range(3))
+                for i in range(3)
+            )
+        self._M = matmul(Rz, matmul(Ry, Rx))
+        
+def project_perspective(point, center, fov=400.0, z_offset=200.0):
+    x, y, z = point
+    z += z_offset
+    f = fov / max(1e-6, z)
+    return int(center[0] + x * f), int(center[1] + y * f)
 
 # ----------------------------
 # Main Game Loop
@@ -331,11 +422,65 @@ def main():
     manager.add("sine",     SineEmitter(),     initially_active=False)
     manager.add("line",     RotatingLineEmitter(), initially_active=False)
     manager.add("curve", CurveEmitter(count=12, radius=800, travel_frames=90), initially_active=False)
+    
+    # Half-size 50 -> 100px wide cube
+    CUBE_SIZE = 17
+    cube_vertices = [
+        [x, y, z]
+        for x in (-CUBE_SIZE, CUBE_SIZE)
+        for y in (-CUBE_SIZE, CUBE_SIZE)
+        for z in (-CUBE_SIZE, CUBE_SIZE)
+    ]
+    cube_edges = [
+        (0,1), (0,2), (0,4), (1,3), (1,5), (2,3),
+        (2,6), (3,7), (4,5), (4,6), (5,7), (6,7)
+    ]
+
+    rot = Rotation3D(
+        angles=(0.0, 0.0, 0.0),
+        rates=(1.2, 0.9, 0.6)  # rad/s
+    )
 
     running = True
     while running:
         CLOCK.tick(FPS_TARGET)
         SCREEN.fill((0, 0, 0))
+        
+        
+        # Inside your loop, before computing cube vertices
+        pulse_base = 27.0     # Half of 34 pixels
+        pulse_amplitude = 2.0 # Grows ±2 pixels
+        pulse_speed = 15.0     # Radians per second
+
+        # Compute pulsing cube size
+        t = pygame.time.get_ticks() / 1000.0  # seconds
+        dynamic_size = pulse_base + pulse_amplitude * math.sin(t * pulse_speed)
+
+        # Recompute cube vertices on each frame
+        cube_vertices = [
+            [x, y, z]
+            for x in (-dynamic_size, dynamic_size)
+            for y in (-dynamic_size, dynamic_size)
+            for z in (-dynamic_size, dynamic_size)
+        ]
+        
+        
+        dt = CLOCK.get_time() / 1000.0  # seconds since last frame
+        rot.update(dt)
+
+        rotated = rot.rotate_points(cube_vertices)
+        projected = [project_perspective(p, CENTER, fov=400, z_offset=200) for p in rotated]
+
+        for i, j in cube_edges:
+            pygame.draw.aaline(SCREEN, (100, 255, 200), projected[i], projected[j])
+        
+        # --- Draw grid overlay (100px spacing)
+        grid_color = (40, 40, 40)
+        spacing = 100
+        for x in range(0, WIDTH, spacing):
+            pygame.draw.line(SCREEN, grid_color, (x, 0), (x, HEIGHT))
+        for y in range(0, HEIGHT, spacing):
+            pygame.draw.line(SCREEN, grid_color, (0, y), (WIDTH, y))
 
         # Event handling
         for event in pygame.event.get():
