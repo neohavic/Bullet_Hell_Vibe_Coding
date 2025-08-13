@@ -4,6 +4,7 @@ from typing import Tuple, List
 from cube import *
 from hud import *
 from bullet_system import EmitterManager, init_emitters
+from beat_pulse import BeatPulseController
 import settings
 
 # ----------------------------
@@ -54,6 +55,7 @@ def main():
     init_emitters(manager)
     cube = CubeRenderer(center=CENTER)
     hud = HUDRenderer(font=FONT)
+    pulse = BeatPulseController("assets/audio/test1_125bpm.wav")
 
     running = True
     while running:
@@ -95,6 +97,10 @@ def main():
 
         manager.update()
         manager.draw(SCREEN)
+        
+        # --- Pulse cube based
+        amp = pulse.update(dt)
+        cube.base_size = 10 * amp + 5
 
         # --- HUD
         bullet_count = sum(

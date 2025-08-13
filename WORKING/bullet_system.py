@@ -47,12 +47,7 @@ class Bullet:
         self.y += self.vy
 
     def draw(self, surface):
-        pygame.draw.circle(
-            surface,
-            BULLET_COLOR,
-            (int(self.x), int(self.y)),
-            BULLET_RADIUS
-        )
+        pygame.draw.circle(surface, BULLET_COLOR, (int(self.x), int(self.y)), BULLET_RADIUS)
 
 
 class OrbitingBullet(Bullet):
@@ -81,7 +76,6 @@ class OrbitingBullet(Bullet):
             self.vx = STRAIGHT_SPEED * math.cos(self.angle)
             self.vy = STRAIGHT_SPEED * math.sin(self.angle)
 
-
 class SinusoidalBullet(Bullet):
     """Straight motion plus sine‐wave lateral wiggle."""
     def __init__(self, angle, speed, amplitude, frequency):
@@ -106,7 +100,6 @@ class SinusoidalBullet(Bullet):
         self.x += self.perp_x * offset
         self.y += self.perp_y * offset
 
-
 class RotatingLineBullet:
     """Bullet riding on a rotating diameter line."""
     def __init__(self, radius, angle, speed):
@@ -124,13 +117,7 @@ class RotatingLineBullet:
         self._recalc()
 
     def draw(self, surface):
-        pygame.draw.circle(
-            surface,
-            BULLET_COLOR,
-            (int(self.x), int(self.y)),
-            BULLET_RADIUS
-        )
-
+        pygame.draw.circle(surface, BULLET_COLOR, (int(self.x), int(self.y)), BULLET_RADIUS)
 
 class CurvedBullet:
     """Quadratic Bézier arc from p0 → p1 → p2, disappears at t=1."""
@@ -141,23 +128,34 @@ class CurvedBullet:
         self.travel_frames = travel_frames
         self.frame = 0
         self.x, self.y = p0
+        # after t>=1, switch to straight motion
+        self.vx = 0
+        self.vy = 0
+        self.flying_out = False
 
     def update(self):
         self.frame += 1
         t = min(self.frame / self.travel_frames, 1.0)
-        inv = 1 - t
-        # Bézier formula
-        self.x = (inv*inv)*self.p0[0] + 2*inv*t*self.p1[0] + (t*t)*self.p2[0]
-        self.y = (inv*inv)*self.p0[1] + 2*inv*t*self.p1[1] + (t*t)*self.p2[1]
+        if t < 1.0:
+            inv = 1 - t
+            # Bézier interpolation
+            self.x = inv*inv * self.p0[0] + 2*inv*t * self.p1[0] + t*t * self.p2[0]
+            self.y = inv*inv * self.p0[1] + 2*inv*t * self.p1[1] + t*t * self.p2[1]
+        else:
+            # once curve is done, compute fly‐out velocity once
+            if not self.flying_out:
+                dx = self.p2[0] - self.p1[0]
+                dy = self.p2[1] - self.p1[1]
+                ang = math.atan2(dy, dx)
+                self.vx = STRAIGHT_SPEED * math.cos(ang)
+                self.vy = STRAIGHT_SPEED * math.sin(ang)
+                self.flying_out = True
+            # travel straight past edge until culled by Emitter
+            self.x += self.vx
+            self.y += self.vy
 
     def draw(self, surface):
-        pygame.draw.circle(
-            surface,
-            BULLET_COLOR,
-            (int(self.x), int(self.y)),
-            BULLET_RADIUS
-        )
-
+        pygame.draw.circle(surface, BULLET_COLOR, (int(self.x), int(self.y)), BULLET_RADIUS)
 
 # ----------------------------
 # Emitter Base & Subclasses
@@ -182,9 +180,10 @@ class Emitter:
         # update bullets and cull off‐screen
         alive = []
         for b in self.bullets:
-            b.update()
-            if 0 <= b.x <= settings.WIDTH and 0 <= b.y <= settings.WIDTH:
-                alive.append(b)
+             b.update()
+             # only cull when completely off-screen
+             if 0 <= b.x <= settings.WIDTH and 0 <= b.y <= settings.HEIGHT:
+                 alive.append(b)
         self.bullets = alive
 
     def draw(self, surface):
@@ -193,7 +192,6 @@ class Emitter:
 
     def spawn(self):
         raise NotImplementedError("Emitters must implement spawn()")
-
 
 class RadialEmitter(Emitter):
     """Spawns `count` bullets in a uniform circle."""
@@ -207,7 +205,6 @@ class RadialEmitter(Emitter):
             vx = STRAIGHT_SPEED * math.cos(angle)
             vy = STRAIGHT_SPEED * math.sin(angle)
             self.bullets.append(Bullet(*CENTER, vx, vy))
-
 
 class OrbitingEmitter(Emitter):
     """
@@ -244,10 +241,7 @@ class SineEmitter(Emitter):
     def spawn(self):
         for i in range(self.count):
             angle = 2 * math.pi * i / self.count
-            self.bullets.append(
-                SinusoidalBullet(angle, STRAIGHT_SPEED, self.amplitude, self.frequency)
-            )
-
+            self.bullets.append(SinusoidalBullet(angle, STRAIGHT_SPEED, self.amplitude, self.frequency))
 
 class RotatingLineEmitter(Emitter):
     """
@@ -274,19 +268,12 @@ class RotatingLineEmitter(Emitter):
             angle = self.line_angle + (0 if t >= 0 else math.pi)
             self.bullets.append(RotatingLineBullet(r, angle, self.speed))
 
-
 class CurveEmitter(Emitter):
     """
     Emits bullets along quadratic Bézier curves fanning out.
     Control point bent by ctrl_angle_offset.
     """
-    def __init__(
-        self,
-        count=24,
-        radius=EDGE_RADIUS,
-        travel_frames=60,
-        ctrl_angle_offset=math.pi / 4
-    ):
+    def __init__(self, count=24, radius=EDGE_RADIUS, travel_frames=60, ctrl_angle_offset=math.pi / 4):
         super().__init__()
         self.count = count
         self.radius = radius
@@ -297,18 +284,11 @@ class CurveEmitter(Emitter):
         for i in range(self.count):
             angle = 2 * math.pi * i / self.count
             p0 = CENTER
-            p2 = (
-                CENTER[0] + self.radius * math.cos(angle),
-                CENTER[1] + self.radius * math.sin(angle)
-            )
+            p2 = (CENTER[0] + self.radius * math.cos(angle), CENTER[1] + self.radius * math.sin(angle))
             mid_radius = self.radius * 0.5
             ctrl = angle + self.ctrl_offset
-            p1 = (
-                CENTER[0] + mid_radius * math.cos(ctrl),
-                CENTER[1] + mid_radius * math.sin(ctrl)
-            )
+            p1 = (CENTER[0] + mid_radius * math.cos(ctrl), CENTER[1] + mid_radius * math.sin(ctrl))
             self.bullets.append(CurvedBullet(p0, p1, p2, self.travel_frames))
-
 
 # ----------------------------
 # Emitter Manager & Setup
@@ -349,18 +329,9 @@ class EmitterManager:
             if self.active.get(name, False):
                 em.draw(surface)
 
-
 def init_emitters(manager: EmitterManager) -> None:
-    """
-    Add default emitters to your manager.
-    The 'straight' (radial) emitter starts active.
-    """
     manager.add("straight", RadialEmitter(), initially_active=True)
     manager.add("orbiting", OrbitingEmitter(), initially_active=False)
-    manager.add("sine",     SineEmitter(),      initially_active=False)
-    manager.add("line",     RotatingLineEmitter(), initially_active=False)
-    manager.add(
-        "curve",
-        CurveEmitter(count=12, radius=EDGE_RADIUS, travel_frames=90),
-        initially_active=False
-    )
+    manager.add("sine", SineEmitter(), initially_active=False)
+    manager.add("line", RotatingLineEmitter(), initially_active=False)
+    manager.add("curve", CurveEmitter(count=12, radius=EDGE_RADIUS, travel_frames=90), initially_active=False)

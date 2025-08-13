@@ -113,7 +113,8 @@ class CubeRenderer:
         )
 
     def get_vertices(self) -> List[List[float]]:
-        size = self.base_size  # Fixed size, no pulsing
+        t = pygame.time.get_ticks() / 1000.0
+        size = self.base_size + self.amplitude * math.sin(t * self.pulse_speed)
         return [
             [x, y, z]
             for x in (-size, size)
