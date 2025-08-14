@@ -6,6 +6,13 @@ class HUDRenderer:
         self.font = font
         self.x, self.y = position
         self.color = color
+        self.debug_logs: List[str] = []
+        self.max_lines = 5  # Show last 5 debug messages
+
+    def log(self, message: str) -> None:
+        self.debug_logs.append(message)
+        if len(self.debug_logs) > self.max_lines:
+            self.debug_logs.pop(0)
 
     def draw(self, surface: pygame.Surface, fps: float, bullet_count: int) -> None:
         fps_text = self.font.render(f"FPS: {fps:.1f}", True, self.color)
@@ -14,3 +21,9 @@ class HUDRenderer:
         surface.blit(fps_text, (self.x, self.y))
         surface.blit(bullet_text, (self.x, self.y + 20))
 
+        self.draw_debug(surface)
+
+    def draw_debug(self, surface: pygame.Surface) -> None:
+        for i, msg in enumerate(self.debug_logs):
+            debug_text = self.font.render(msg, True, self.color)
+            surface.blit(debug_text, (self.x, self.y + 50 + i * 20))

@@ -1,10 +1,3 @@
-# bullet_system.py
-
-"""
-A complete bullet & emitter system for Pygame.
-Importable as a single module.
-"""
-
 import math
 import pygame
 import settings
@@ -13,23 +6,16 @@ import settings
 # Constants
 # ----------------------------
 
-#WIDTH            = 900
-#HEIGHT           = 900
 CENTER           = (settings.WIDTH // 2, settings.HEIGHT // 2)
-
 BULLET_RADIUS    = 4
 BULLET_COLOR     = (255, 100, 255)
-
 STRAIGHT_SPEED   = 5
 BASE_ROT_SPEED   = 0.03
 ORBIT_EXPAND_SPEED = 2
 ORBIT_CYCLE_LIMIT  = 3
-
 SINE_AMPLITUDE   = 10
 SINE_FREQUENCY   = 0.2
-
 EDGE_RADIUS      = max(settings.WIDTH, settings.HEIGHT) // 2
-
 EMISSION_INTERVAL = 30  # frames between spawns
 
 # ----------------------------
@@ -48,7 +34,6 @@ class Bullet:
 
     def draw(self, surface):
         pygame.draw.circle(surface, BULLET_COLOR, (int(self.x), int(self.y)), BULLET_RADIUS)
-
 
 class OrbitingBullet(Bullet):
     """Expands out on orb, then spins. fly_out() sends it straight."""
@@ -85,23 +70,19 @@ class SinusoidalBullet(Bullet):
         # perpendicular unit vector for lateral offset
         self.perp_x = -math.sin(angle)
         self.perp_y = math.cos(angle)
-
         self.amplitude = amplitude
         self.frequency = frequency
         self.frame = 0
 
     def update(self):
-        # advance straight
         self.x += self.vx
         self.y += self.vy
-        # lateral wiggle
         self.frame += 1
         offset = self.amplitude * math.sin(self.frame * self.frequency)
         self.x += self.perp_x * offset
         self.y += self.perp_y * offset
 
 class RotatingLineBullet:
-    """Bullet riding on a rotating diameter line."""
     def __init__(self, radius, angle, speed):
         self.radius = radius
         self.angle = angle
@@ -128,7 +109,6 @@ class CurvedBullet:
         self.travel_frames = travel_frames
         self.frame = 0
         self.x, self.y = p0
-        # after t>=1, switch to straight motion
         self.vx = 0
         self.vy = 0
         self.flying_out = False
@@ -138,11 +118,9 @@ class CurvedBullet:
         t = min(self.frame / self.travel_frames, 1.0)
         if t < 1.0:
             inv = 1 - t
-            # Bézier interpolation
             self.x = inv*inv * self.p0[0] + 2*inv*t * self.p1[0] + t*t * self.p2[0]
             self.y = inv*inv * self.p0[1] + 2*inv*t * self.p1[1] + t*t * self.p2[1]
         else:
-            # once curve is done, compute fly‐out velocity once
             if not self.flying_out:
                 dx = self.p2[0] - self.p1[0]
                 dy = self.p2[1] - self.p1[1]
@@ -150,7 +128,6 @@ class CurvedBullet:
                 self.vx = STRAIGHT_SPEED * math.cos(ang)
                 self.vy = STRAIGHT_SPEED * math.sin(ang)
                 self.flying_out = True
-            # travel straight past edge until culled by Emitter
             self.x += self.vx
             self.y += self.vy
 
@@ -160,7 +137,6 @@ class CurvedBullet:
 # ----------------------------
 # Emitter Base & Subclasses
 # ----------------------------
-
 class Emitter:
     """
     Base emitter handles interval spawning, bullet updates, and bounds culling.
@@ -171,17 +147,13 @@ class Emitter:
         self._timer = 0
 
     def update(self):
-        # handle timed spawn
         self._timer += 1
         if self._timer >= EMISSION_INTERVAL:
             self.spawn()
             self._timer = 0
-
-        # update bullets and cull off‐screen
         alive = []
         for b in self.bullets:
              b.update()
-             # only cull when completely off-screen
              if 0 <= b.x <= settings.WIDTH and 0 <= b.y <= settings.HEIGHT:
                  alive.append(b)
         self.bullets = alive
@@ -244,10 +216,6 @@ class SineEmitter(Emitter):
             self.bullets.append(SinusoidalBullet(angle, STRAIGHT_SPEED, self.amplitude, self.frequency))
 
 class RotatingLineEmitter(Emitter):
-    """
-    Emits bullets along a diameter that continuously rotates.
-    Always clears old before spawning new, so count stays constant.
-    """
     def __init__(self, count=36, radius=EDGE_RADIUS, speed_mul=3):
         super().__init__()
         self.count = count * 2
@@ -295,10 +263,6 @@ class CurveEmitter(Emitter):
 # ----------------------------
 
 class EmitterManager:
-    """
-    Holds multiple emitters; any subset can be active simultaneously.
-    update() & draw() only touch active ones.
-    """
     def __init__(self):
         self.emitters = {}  # name → Emitter instance
         self.active   = {}  # name → bool
