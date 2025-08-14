@@ -1,13 +1,14 @@
+# ----------------------------
+# Constants & Initialization
+# ----------------------------
+
 import settings
 import pygame
 import math
 
-# ----------------------------
-# Constants & Initialization
-# ----------------------------
 pygame.init()
 
-# Get display information before setting the mode
+# --- Get display information before setting the mode
 info = pygame.display.Info()
 settings.WIDTH = info.current_w
 settings.HEIGHT = info.current_h
@@ -15,47 +16,48 @@ SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
 CLOCK = pygame.time.Clock()
 
-# Font for counters
+# --- Font for counters
 FONT = pygame.font.SysFont("Arial", 18)
 CENTER = (settings.WIDTH // 2, settings.HEIGHT // 2)
 
-# Circle settings
+# --- Circle settings
 RADIUS = 800 // 2  # diameter to radius
 COLOR = (128, 128, 128)  # bright red
 THICKNESS = 2        # outline thickness
 
-# Bullet settings
+# --- Bullet settings
 BULLET_RADIUS = 4
 BULLET_COLOR = (255, 100, 255)
 STRAIGHT_SPEED = 4
 ORBIT_EXPAND_SPEED = 2
 BASE_ROT_SPEED = math.radians(10) / settings.FPS_TARGET  # 10° per second
 
-# Sinusoidal movement settings
+# --- Sinusoidal movement settings
 SINE_AMPLITUDE = 6
 SINE_FREQUENCY = 0.15
 
-# Screen-edge radius for full diagonal line
+# --- Screen-edge radius for full diagonal line
 EDGE_RADIUS = math.hypot(settings.WIDTH / 2, settings.HEIGHT / 2)
 
-# Emission settings
+# --- Emission settings
 EMISSION_INTERVAL = 30  # frames between spawns
 ORBIT_CYCLE_LIMIT = 5   # orbiting emissions before fly-out
 
-# Precompute screen-corner radius for line emitter
+# --- Precompute screen-corner radius for line emitter
 EDGE_RADIUS = math.hypot(settings.WIDTH/2, settings.WIDTH/2)
 
+# ----------------------------
+# Main Game Loop
+# ----------------------------
 
 from typing import Tuple, List
 from cube import *
 from hud import *
 from beat_pulse import BeatPulseController
 from player import Player
-from bullet_system import EmitterManager, init_emitters
+from bullet_system import *
+from emitter_manager import *
 
-# ----------------------------
-# Main Game Loop
-# ----------------------------
 def main():
     
     # --- Initialize game assets
@@ -93,7 +95,7 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                # toggle each pattern independently
+                # --- Toggle each pattern independently
                 elif event.key == pygame.K_1:
                     manager.toggle("straight")
                 elif event.key == pygame.K_2:

@@ -1,7 +1,6 @@
 import settings
 import pygame
 import math
-from hud import *
 
 CENTER = (settings.WIDTH // 2, settings.HEIGHT // 2)
 
@@ -16,6 +15,9 @@ class Player:
         self.bullets = []
         self.bullet_cooldown = 10
         self.cooldown_timer = 0
+        self.sword_angle = 0
+        self.swinging = False
+
 
     def handle_input(self, keys):
         dx = dy = 0
@@ -35,10 +37,18 @@ class Player:
         if self.cooldown_timer > 0:
             self.cooldown_timer -= 1
         if keys[pygame.K_SPACE] and self.cooldown_timer == 0:
-            center_x = int(settings.WIDTH / 2)
-            center_y = int(settings.HEIGHT / 2)
-            self.shoot((center_x, center_y))
+            self.shoot((CENTER))
             self.cooldown_timer = self.bullet_cooldown
+        if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]:
+            if not self.swinging:
+                self.swinging = True
+                self.sword_angle = 0
+
+        if self.swinging:
+            self.sword_angle += 6  # degrees per frame
+        if self.sword_angle >= 360:
+            self.sword_angle = 0
+            self.swinging = False
         for bullet in self.bullets:
             bullet['x'] += bullet['dx'] * bullet['speed']
             bullet['y'] += bullet['dy'] * bullet['speed']
@@ -65,10 +75,58 @@ class Player:
         self.bullets.append(bullet)
 
     def draw(self, screen):
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
-        # Very dark grey beam to CENTER
-        center_x = int(settings.WIDTH / 2)
-        center_y = int(settings.HEIGHT / 2)
-        pygame.draw.line(screen, (105, 7, 7), (self.x, self.y), (center_x, center_y), 2)
+        time = pygame.time.get_ticks() * 0.002
+        cx, cy = self.x, self.y
+        ring_radius = 40
+        ring_thickness = 2
+        segments = 32  # More segments = smoother ring
+
+        # Z-axis ring (flat circle)
+        for i in range(segments):
+            angle = time + i * (2 * math.pi / segments)
+            x = cx + math.cos(angle) * ring_radius
+            y = cy + math.sin(angle) * ring_radius
+            pygame.draw.circle(screen, self.color, (int(x), int(y)), ring_thickness)
+
+        # X-axis ring (vertical ellipse)
+        for i in range(segments):
+            angle = time + i * (2 * math.pi / segments)
+            x = cx + math.cos(angle) * ring_radius
+            y = cy + math.sin(angle) * ring_radius * math.cos(time)
+            pygame.draw.circle(screen, self.color, (int(x), int(y)), ring_thickness)
+
+        # Y-axis ring (horizontal ellipse)
+        for i in range(segments):
+            angle = time + i * (2 * math.pi / segments)
+            x = cx + math.cos(angle) * ring_radius * math.cos(time)
+            y = cy + math.sin(angle) * ring_radius
+            pygame.draw.circle(screen, self.color, (int(x), int(y)), ring_thickness)
+
+        # Beam to CENTER
+        pygame.draw.line(screen, (105, 7, 7), (cx, cy), CENTER, 2)
+
+        # Bullets
         for bullet in self.bullets:
             pygame.draw.circle(screen, self.bullet_color, (int(bullet['x']), int(bullet['y'])), bullet['radius'])
+
+        if self.swinging:
+            angle_rad = math.radians(self.sword_angle)
+            cx, cy = self.x, self.y
+            length = 90
+            offset = math.radians(20)
+
+            # Two angled points from center
+            a1 = angle_rad + offset
+            a2 = angle_rad - offset
+            p1 = (cx + math.cos(a1) * length, cy + math.sin(a1) * length)
+            p2 = (cx + math.cos(a2) * length, cy + math.sin(a2) * length)
+
+            # Tip of the sword (forward direction)
+            tip_length = length * 2
+            tip = (cx + math.cos(angle_rad) * tip_length, cy + math.sin(angle_rad) * tip_length)
+
+            # Draw four lines
+            pygame.draw.line(screen, (255, 0, 0), (cx, cy), p1, 2)
+            pygame.draw.line(screen, (255, 0, 0), (cx, cy), p2, 2)
+            pygame.draw.line(screen, (255, 0, 0), p1, tip, 2)
+            pygame.draw.line(screen, (255, 0, 0), p2, tip, 2)
