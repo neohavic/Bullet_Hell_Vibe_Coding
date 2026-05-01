@@ -9,9 +9,9 @@ class EmitterManager:
         self.emitters = {}  # name → Emitter instance
         self.active   = {}  # name → bool
 
-    def add(self, name, emitter, initially_active=False):
+    def add(self, name, emitter, initiallyActive=False):
         self.emitters[name] = emitter
-        self.active[name]   = initially_active
+        self.active[name]   = initiallyActive
 
     def enable(self, name):
         if name in self.active:
@@ -35,9 +35,9 @@ class EmitterManager:
             if self.active.get(name, False):
                 em.draw(surface)
 
-def init_emitters(manager: EmitterManager) -> None:
-    manager.add("straight", RadialEmitter(), initially_active=True)
-    manager.add("orbiting", OrbitingEmitter(), initially_active=False)
-    manager.add("sine", SineEmitter(), initially_active=False)
-    manager.add("line", RotatingLineEmitter(), initially_active=False)
-    manager.add("curve", CurveEmitter(count=12, radius=EDGE_RADIUS, travel_frames=90), initially_active=False)
+def initEmitters(manager: EmitterManager) -> None:
+    manager.add("straight", RadialEmitter(), initiallyActive=True)
+    manager.add("orbiting", OrbitingEmitter(), initiallyActive=False)
+    manager.add("sine", SineEmitter(), initiallyActive=False)
+    manager.add("line", RotatingLineEmitter(), initiallyActive=False)
+    manager.add("curve", CurveEmitter(count=12, radius=edgeRadius, travelFrames=90), initiallyActive=False)

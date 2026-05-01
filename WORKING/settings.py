@@ -1,3 +1,3 @@
-# --- Screen settings
-WIDTH, HEIGHT = 900, 900
-FPS_TARGET   = 60
+FPS_TARGET = 60
+WIDTH = 1920
+HEIGHT = 1080

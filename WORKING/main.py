@@ -12,39 +12,36 @@ pygame.init()
 info = pygame.display.Info()
 settings.WIDTH = info.current_w
 settings.HEIGHT = info.current_h
-SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
-CLOCK = pygame.time.Clock()
+clock = pygame.time.Clock()
 
 # --- Font for counters
-FONT = pygame.font.SysFont("Arial", 18)
-CENTER = (settings.WIDTH // 2, settings.HEIGHT // 2)
+font = pygame.font.SysFont("Arial", 18)
+center = (settings.WIDTH // 2, settings.HEIGHT // 2)
 
 # --- Circle settings
-RADIUS = 800 // 2  # diameter to radius
-COLOR = (128, 128, 128)  # bright red
-THICKNESS = 2        # outline thickness
+radius = 800 // 2  # diameter to radius
+color = (128, 128, 128)  # bright red
+thickness = 2        # outline thickness
 
 # --- Bullet settings
-BULLET_RADIUS = 4
-BULLET_COLOR = (255, 100, 255)
-STRAIGHT_SPEED = 4
-ORBIT_EXPAND_SPEED = 2
-BASE_ROT_SPEED = math.radians(10) / settings.FPS_TARGET  # 10° per second
+bulletRadius = 4
+bulletColor = (255, 100, 255)
+straightSpeed = 4
+orbitExpandSpeed = 2
+baseRotSpeed = math.radians(10) / settings.FPS_TARGET  # 10° per second
 
 # --- Sinusoidal movement settings
-SINE_AMPLITUDE = 6
-SINE_FREQUENCY = 0.15
+sineAmplitude = 6
+sineFrequency = 0.15
 
 # --- Screen-edge radius for full diagonal line
-EDGE_RADIUS = math.hypot(settings.WIDTH / 2, settings.HEIGHT / 2)
+edgeRadius = math.hypot(settings.WIDTH / 2, settings.HEIGHT / 2)
 
 # --- Emission settings
-EMISSION_INTERVAL = 30  # frames between spawns
-ORBIT_CYCLE_LIMIT = 5   # orbiting emissions before fly-out
-
-# --- Precompute screen-corner radius for line emitter
-EDGE_RADIUS = math.hypot(settings.WIDTH/2, settings.WIDTH/2)
+emissionInterval = 30  # frames between spawns
+orbitCycleLimit = 5   # orbiting emissions before fly-out
 
 # ----------------------------
 # Main Game Loop
@@ -62,31 +59,31 @@ def main():
     
     # --- Initialize game assets
     manager = EmitterManager()
-    init_emitters(manager)
-    cube = CubeRenderer(center=CENTER)
-    hud = HUDRenderer(font=FONT)
-    pulse = BeatPulseController("assets/audio/test1_125bpm.wav")
-    player = Player(100, 100)
+    initEmitters(manager)
+    cubeRenderer = CubeRenderer(center=center)
+    hudRenderer = HUDRenderer(font=font)
+    beatPulse = BeatPulseController("assets/audio/test1_125bpm.wav")
+    playerCharacter = Player(100, 100)
 
     running = True
     while running:
-        CLOCK.tick(settings.FPS_TARGET)
-        SCREEN.fill((0, 0, 0))
+        clock.tick(settings.FPS_TARGET)
+        screen.fill((0, 0, 0))
 
-        pygame.draw.circle(SCREEN, COLOR, CENTER, RADIUS, THICKNESS)
+        pygame.draw.circle(screen, color, center, radius, thickness)
 
         # --- Cube updates
-        dt = CLOCK.get_time() / 1000.0
-        cube.update(dt)
-        cube.draw(SCREEN)
+        dt = clock.get_time() / 1000.0
+        cubeRenderer.update(dt)
+        cubeRenderer.draw(screen)
 
         # --- Grid overlay
-        grid_color = (40, 40, 40)
+        gridColor = (40, 40, 40)
         spacing = 100
         for x in range(0, settings.WIDTH, spacing):
-            pygame.draw.line(SCREEN, grid_color, (x, 0), (x, settings.HEIGHT))
+            pygame.draw.line(screen, gridColor, (x, 0), (x, settings.HEIGHT))
         for y in range(0, settings.HEIGHT, spacing):
-            pygame.draw.line(SCREEN, grid_color, (0, y), (settings.WIDTH, y))
+            pygame.draw.line(screen, gridColor, (0, y), (settings.WIDTH, y))
 
         # --- Event handling
         for event in pygame.event.get():
@@ -108,27 +105,27 @@ def main():
                     manager.toggle("curve")
                     
         keys = pygame.key.get_pressed()
-        player.handle_input(keys)
+        playerCharacter.handleInput(keys)
 
-        enemy_center = (settings.WIDTH // 2, settings.HEIGHT // 2)
+        enemyCenter = (settings.WIDTH // 2, settings.HEIGHT // 2)
 
-        player.update(keys)
-        player.draw(SCREEN)
+        playerCharacter.update(keys)
+        playerCharacter.draw(screen)
 
         manager.update()
-        manager.draw(SCREEN)
+        manager.draw(screen)
         
         # --- Pulse cube based
-        amp = pulse.update(dt)
-        cube.base_size = 10 * amp + 5
+        amplitude = beatPulse.update(dt)
+        cubeRenderer.baseSize = 10 * amplitude + 5
 
         # --- HUD
-        bullet_count = sum(
+        bulletCount = sum(
             len(manager.emitters[name].bullets)
             for name, active in manager.active.items()
             if active
         )
-        hud.draw(SCREEN, CLOCK.get_fps(), bullet_count)
+        hudRenderer.draw(screen, clock.get_fps(), bulletCount)
 
         pygame.display.flip()
 

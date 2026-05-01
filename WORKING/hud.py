@@ -6,24 +6,24 @@ class HUDRenderer:
         self.font = font
         self.x, self.y = position
         self.color = color
-        self.debug_logs: List[str] = []
-        self.max_lines = 5  # Show last 5 debug messages
+        self.debugLogs: List[str] = []
+        self.maxLines = 5  # Show last 5 debug messages
 
     def log(self, message: str) -> None:
-        self.debug_logs.append(message)
-        if len(self.debug_logs) > self.max_lines:
-            self.debug_logs.pop(0)
+        self.debugLogs.append(message)
+        if len(self.debugLogs) > self.maxLines:
+            self.debugLogs.pop(0)
 
-    def draw(self, surface: pygame.Surface, fps: float, bullet_count: int) -> None:
-        fps_text = self.font.render(f"FPS: {fps:.1f}", True, self.color)
-        bullet_text = self.font.render(f"Bullets: {bullet_count}", True, self.color)
+    def draw(self, surface: pygame.Surface, fps: float, bulletCount: int) -> None:
+        fpsText = self.font.render(f"FPS: {fps:.1f}", True, self.color)
+        bulletText = self.font.render(f"Bullets: {bulletCount}", True, self.color)
 
-        surface.blit(fps_text, (self.x, self.y))
-        surface.blit(bullet_text, (self.x, self.y + 20))
+        surface.blit(fpsText, (self.x, self.y))
+        surface.blit(bulletText, (self.x, self.y + 20))
 
-        self.draw_debug(surface)
+        self.drawDebug(surface)
 
-    def draw_debug(self, surface: pygame.Surface) -> None:
-        for i, msg in enumerate(self.debug_logs):
-            debug_text = self.font.render(msg, True, self.color)
-            surface.blit(debug_text, (self.x, self.y + 50 + i * 20))
+    def drawDebug(self, surface: pygame.Surface) -> None:
+        for i, msg in enumerate(self.debugLogs):
+            debugText = self.font.render(msg, True, self.color)
+            surface.blit(debugText, (self.x, self.y + 50 + i * 20))
